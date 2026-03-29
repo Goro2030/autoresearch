@@ -11,7 +11,7 @@ import pandas as pd
 CONFIG = {
     "sma_fast": 40,
     "sma_slow": 200,
-    "atr_period": 7,
+    "atr_period": 10,
 }
 
 
@@ -36,7 +36,9 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     ], axis=1).max(axis=1)
     atr = tr.rolling(CONFIG["atr_period"]).mean()
     atr_pct = atr / close
-    atr_median = atr_pct.rolling(200).median()
+
+    # Use expanding window for more stable median
+    atr_median = atr_pct.expanding(min_periods=200).median()
 
     signal = pd.Series(0, index=df.index)
     signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 1.5)] = 1
