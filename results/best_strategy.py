@@ -28,7 +28,7 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     sma_fast = close.rolling(CONFIG["sma_fast"]).mean()
     sma_slow = close.rolling(CONFIG["sma_slow"]).mean()
 
-    # ATR-based volatility filter with shorter period
+    # ATR-based volatility filter
     tr = pd.concat([
         high - low,
         (high - close.shift(1)).abs(),
@@ -38,8 +38,11 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     atr_pct = atr / close
     atr_median = atr_pct.rolling(200).median()
 
+    # SMA200 must be above its own 200-day MA (long-term trend filter)
+    sma_slow_ma = sma_slow.rolling(200).mean()
+
     signal = pd.Series(0, index=df.index)
-    # Long when trend is up AND volatility is not extreme
-    signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 1.5)] = 1
+    # Long when crossover + low vol + SMA200 itself is in an uptrend
+    signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 1.5) & (sma_slow > sma_slow_ma)] = 1
 
     return signal
