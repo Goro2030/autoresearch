@@ -11,6 +11,7 @@ import pandas as pd
 CONFIG = {
     "sma_fast": 40,
     "sma_slow": 200,
+    "atr_period": 20,
 }
 
 
@@ -21,10 +22,24 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     Index must match the input DataFrame.
     """
     close = df["Close"]
+    high = df["High"]
+    low = df["Low"]
+
     sma_fast = close.rolling(CONFIG["sma_fast"]).mean()
     sma_slow = close.rolling(CONFIG["sma_slow"]).mean()
 
+    # ATR-based volatility filter
+    tr = pd.concat([
+        high - low,
+        (high - close.shift(1)).abs(),
+        (low - close.shift(1)).abs()
+    ], axis=1).max(axis=1)
+    atr = tr.rolling(CONFIG["atr_period"]).mean()
+    atr_pct = atr / close  # ATR as % of price
+    atr_median = atr_pct.rolling(200).median()
+
     signal = pd.Series(0, index=df.index)
-    signal[sma_fast > sma_slow] = 1
+    # Long when trend is up AND volatility is not extreme
+    signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 2)] = 1
 
     return signal
