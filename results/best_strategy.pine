@@ -2,32 +2,21 @@
 strategy("Autoresearch Strategy", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
 
 // ── Parameters ──
-sma_fast = input.int(40, "SMA Fast Period")
-sma_slow = input.int(200, "SMA Slow Period")
-atr_period = input.int(10, "ATR Period")
+sma_fast = input.int(40, "sma_fast")
+sma_slow = input.int(200, "sma_slow")
+atr_period = input.int(10, "atr_period")
 
 // ── Indicators ──
-sma_fast_val = ta.sma(close, sma_fast)
-sma_slow_val = ta.sma(close, sma_slow)
-
-// ATR volatility filter
+sma_sma_fast = ta.sma(close, sma_fast)
+sma_sma_slow = ta.sma(close, sma_slow)
+ema_sma_slow = ta.ema(close, sma_slow)
 atr_val = ta.atr(atr_period)
 atr_pct = atr_val / close
-atr_median = ta.percentile_nearest_rank(atr_pct, 200, 50)
-
-// Distance metrics
-distance_fast = (close - sma_fast_val) / sma_fast_val
-distance_slow = (close - sma_slow_val) / sma_slow_val
-dist_slow_atr = (close - sma_slow_val) / atr_val  // ATR-normalized distance
+atr_pct_avg = ta.sma(atr_pct, 100)
 
 // ── Entry/Exit Conditions ──
-trend_ok = sma_fast_val > sma_slow_val
-vol_ok = atr_pct < atr_median * 1.5
-dist_ok = distance_slow < 0.25 and distance_fast < 0.10
-atr_dist_ok = dist_slow_atr < 10
-
-long_entry = trend_ok and vol_ok and dist_ok and atr_dist_ok
-long_exit = sma_fast_val < sma_slow_val
+long_entry = sma_sma_fast > sma_sma_slow and atr_pct < 1.5 * atr_pct_avg
+long_exit = sma_sma_fast < sma_sma_slow
 
 // ── Strategy Execution ──
 if long_entry
@@ -36,7 +25,8 @@ if long_exit
     strategy.close("Long")
 
 // ── Plots ──
-plot(sma_fast_val, "SMA 40", color.blue, linewidth=2)
-plot(sma_slow_val, "SMA 200", color.orange, linewidth=2)
+plot(sma_sma_fast, "sma_fast", color.blue)
+plot(sma_sma_slow, "sma_slow", color.orange)
+plot(ema_sma_slow, "sma_slow", color.orange)
 
 bgcolor(long_entry ? color.new(color.green, 90) : na)
