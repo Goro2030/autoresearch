@@ -8,8 +8,9 @@ import importlib
 import json
 import signal
 import sys
-import time
 import traceback
+
+import numpy as np
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -207,6 +208,22 @@ def run_experiment(description: str = "manual run") -> float:
         "pct_profitable_up_months": val_results.get("pct_profitable_up_months", 0),
         "pct_profitable_down_months": val_results.get("pct_profitable_down_months", 0),
     }
+
+    # Ensure all values are JSON-serializable (convert numpy types)
+    def _jsonify(obj):
+        if isinstance(obj, (np.integer,)):
+            return int(obj)
+        if isinstance(obj, (np.floating,)):
+            return float(obj)
+        if isinstance(obj, (np.bool_,)):
+            return bool(obj)
+        if isinstance(obj, dict):
+            return {k: _jsonify(v) for k, v in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            return [_jsonify(v) for v in obj]
+        return obj
+
+    log_entry = _jsonify(log_entry)
 
     with open(LOG_FILE, "a") as f:
         f.write(json.dumps(log_entry) + "\n")

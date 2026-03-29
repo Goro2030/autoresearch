@@ -48,7 +48,7 @@ def download_data(tickers: list[str] = None, refresh: bool = False) -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     for ticker in tickers:
-        filepath = DATA_DIR / f"{ticker}.parquet"
+        filepath = DATA_DIR / f"{ticker}.csv"
         if filepath.exists() and not refresh:
             print(f"  {ticker}: cached (use --refresh to re-download)")
             continue
@@ -62,7 +62,7 @@ def download_data(tickers: list[str] = None, refresh: bool = False) -> None:
             # Flatten multi-level columns if present
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
-            df.to_parquet(filepath)
+            df.to_csv(filepath)
             print(f"OK ({len(df)} rows, {df.index[0].date()} to {df.index[-1].date()})")
         except Exception as e:
             print(f"ERROR: {e}")
@@ -92,12 +92,12 @@ def load_data(
     result = {}
 
     for ticker in tickers:
-        filepath = DATA_DIR / f"{ticker}.parquet"
+        filepath = DATA_DIR / f"{ticker}.csv"
         if not filepath.exists():
             print(f"  WARNING: No data for {ticker}. Run `python prepare.py` first.")
             continue
 
-        df = pd.read_parquet(filepath)
+        df = pd.read_csv(filepath, index_col=0, parse_dates=True)
         df.index = pd.to_datetime(df.index)
         mask = (df.index >= start) & (df.index <= end)
         filtered = df.loc[mask].copy()
@@ -475,9 +475,9 @@ def main():
         # Show cached data status
         print(f"\n📦 Cached Data:")
         for ticker in args.tickers:
-            filepath = DATA_DIR / f"{ticker}.parquet"
+            filepath = DATA_DIR / f"{ticker}.csv"
             if filepath.exists():
-                df = pd.read_parquet(filepath)
+                df = pd.read_csv(filepath, index_col=0, parse_dates=True)
                 print(f"  {ticker}: {len(df)} rows ({df.index[0].date()} to {df.index[-1].date()})")
             else:
                 print(f"  {ticker}: not downloaded")
