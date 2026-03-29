@@ -202,6 +202,9 @@ def run_experiment(description: str = "manual run") -> float:
             BEST_STRATEGY_FILE.write_text(strategy_path.read_text())
             print(f"\n  💾 Best strategy saved to {BEST_STRATEGY_FILE}")
 
+        # Pine Script is generated separately after all rounds complete:
+        #   python generate_pine.py -o results/best_strategy.pine
+
     # Build rich description: agent description + CONFIG summary
     config_summary = ", ".join(f"{k}={v}" for k, v in config.items()) if config else "none"
     rich_description = f"{description} | Config: {config_summary}"

@@ -32,5 +32,11 @@ DO NOT modify `prepare.py`, `run_experiment.py`, or any infrastructure files.
 - Only use pandas and numpy.
 - Only return signals of 0 or 1 (long or flat).
 
+## After All Rounds Complete
+Generate the TradingView Pine Script for the winning strategy:
+```
+python generate_pine.py -o results/best_strategy.pine
+```
+
 ## Current Best Score
 Check the last KEEP commit or results/experiment_log.jsonl for the current best.
