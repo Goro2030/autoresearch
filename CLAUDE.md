@@ -33,9 +33,13 @@ DO NOT modify `prepare.py`, `run_experiment.py`, or any infrastructure files.
 - Only return signals of 0 or 1 (long or flat).
 
 ## After All Rounds Complete
-Generate the TradingView Pine Script for the winning strategy:
+1. Generate the TradingView Pine Script for the winning strategy:
 ```
 python generate_pine.py -o results/best_strategy.pine
+```
+2. Write a run summary so the dashboard can display completion:
+```
+python write_summary.py
 ```
 
 ## Current Best Score

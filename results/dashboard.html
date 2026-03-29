@@ -112,6 +112,15 @@
   }
   .modal-actions button.primary { background: #f39c12; color: #000; font-weight: 600; }
   .modal-actions button:hover { opacity: 0.85; }
+  .summary-modal { max-width: 600px; }
+  .summary-modal h2 { color: #2ecc71; font-size: 1.3rem; margin-bottom: 12px; }
+  .summary-list { list-style: none; padding: 0; margin: 0 0 16px 0; }
+  .summary-list li {
+    padding: 8px 0; border-bottom: 1px solid #2a2a4a; font-size: 0.9rem; line-height: 1.5;
+  }
+  .summary-list li:last-child { border-bottom: none; }
+  .summary-highlight { color: #2ecc71; font-weight: 700; font-size: 1.05rem; }
+  .summary-dim { color: #888; }
 
   .auto-refresh {
     position: fixed; bottom: 16px; right: 16px; background: #16213e;
@@ -224,6 +233,17 @@
   </div>
 </div>
 
+<!-- Run Complete Summary Modal -->
+<div class="modal-overlay" id="summary-modal">
+  <div class="modal summary-modal">
+    <h2 id="summary-title"></h2>
+    <ul class="summary-list" id="summary-list"></ul>
+    <div class="modal-actions">
+      <button id="summary-close">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="auto-refresh">
   Auto-refresh:
   <select id="refresh-interval">
@@ -240,6 +260,7 @@
 const charts = {};
 let refreshTimer = null;
 let cachedPineScript = null;
+let summaryShown = false;
 
 const C = {
   green: '#2ecc71', red: '#e74c3c', blue: '#3498db',
@@ -316,6 +337,43 @@ document.getElementById('pine-copy').addEventListener('click', () => {
   });
 });
 
+// Summary modal
+document.getElementById('summary-close').addEventListener('click', () => {
+  document.getElementById('summary-modal').classList.remove('active');
+});
+document.getElementById('summary-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
+});
+
+function checkRunSummary() {
+  if (summaryShown) return;
+  fetch('run_summary.json?t=' + Date.now())
+    .then(r => { if (!r.ok) throw new Error('not found'); return r.json(); })
+    .then(s => {
+      summaryShown = true;
+      const title = document.getElementById('summary-title');
+      title.textContent = s.total_experiments + ' rounds complete';
+      const list = document.getElementById('summary-list');
+      const items = [
+        { html: false, text: s.total_experiments + ' experiments \u2014 score from ' + s.initial_score.toFixed(4) + ' \u2192 ' + s.best_score.toFixed(4) + ' (+' + s.improvement_pct + '%)' },
+        { html: false, text: 'Winning strategy (#' + s.best_experiment + '): ' + s.best_description },
+        { html: false, text: 'Val Sharpe: ' + (s.best_val_sharpe?.toFixed(4) ?? 'N/A') + ' | Val Return: ' + (s.best_val_return?.toFixed(1) ?? 'N/A') + '% | Max DD: ' + ((s.best_max_drawdown * 100)?.toFixed(1) ?? 'N/A') + '%' },
+        { html: false, text: 'Kept: ' + s.total_kept + ' | Discarded: ' + s.total_discarded + ' | Complexity: ' + s.best_complexity },
+        { html: false, text: 'Pine Script ready \u2014 click the orange pill on the winning row' },
+      ];
+      const lis = items.map(item => {
+        const li = document.createElement('li');
+        li.textContent = item.text;
+        return li;
+      });
+      // Highlight first item
+      if (lis.length > 0) lis[0].className = 'summary-highlight';
+      list.replaceChildren(...lis);
+      document.getElementById('summary-modal').classList.add('active');
+    })
+    .catch(() => { /* no summary yet, run still in progress */ });
+}
+
 function createLogRow(e, isWinner) {
   const tr = document.createElement('tr');
   if (e._isBH) {
@@ -391,6 +449,7 @@ async function loadData() {
     if (entries.length === 0) return;
     render(entries);
     document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+    checkRunSummary();
   } catch (e) {
     console.error('Failed to load data:', e);
   }

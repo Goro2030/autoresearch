@@ -1,0 +1,23 @@
+{
+  "total_experiments": 100,
+  "total_kept": 13,
+  "total_discarded": 87,
+  "initial_score": 0.4186,
+  "best_score": 1.751,
+  "best_experiment": 89,
+  "best_description": "SMA 40/200 trend + SMA200 dist 25%/10% + EMA200 ATR-unit dist < 10 + ATR 1.5x | Config: sma_fast=40, sma_slow=200, atr_period=10",
+  "best_val_sharpe": 1.671,
+  "best_val_return": 29.72,
+  "best_max_drawdown": -0.0454,
+  "best_trades_per_year": 64.8,
+  "best_complexity": 3,
+  "best_config": {
+    "sma_fast": 40,
+    "sma_slow": 200,
+    "atr_period": 10
+  },
+  "improvement_pct": 318.3,
+  "bh_score": -0.2551,
+  "bh_val_sharpe": 0.3984,
+  "bh_val_return": 19.69
+}
