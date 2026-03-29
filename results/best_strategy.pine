@@ -5,7 +5,6 @@ strategy("Autoresearch Strategy", overlay=true, default_qty_type=strategy.percen
 sma_fast = input.int(40, "sma_fast")
 sma_slow = input.int(200, "sma_slow")
 atr_period = input.int(10, "atr_period")
-atr_mult = input.float(1.5, "atr_mult")
 
 // ── Indicators ──
 sma_sma_fast = ta.sma(close, sma_fast)
@@ -15,7 +14,7 @@ atr_pct = atr_val / close
 atr_pct_avg = ta.sma(atr_pct, 100)
 
 // ── Entry/Exit Conditions ──
-long_entry = sma_sma_fast > sma_sma_slow
+long_entry = sma_sma_fast > sma_sma_slow and atr_pct < 1.5 * atr_pct_avg
 long_exit = sma_sma_fast < sma_sma_slow
 
 // ── Strategy Execution ──

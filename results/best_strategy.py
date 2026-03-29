@@ -12,7 +12,6 @@ CONFIG = {
     "sma_fast": 40,
     "sma_slow": 200,
     "atr_period": 10,
-    "atr_mult": 1.5,
 }
 
 
@@ -39,8 +38,14 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     atr_pct = atr / close
     atr_median = atr_pct.rolling(200).median()
 
+    # Require BOTH: sma crossover AND close is within 2% of fast SMA
+    # (catch pullback entries in uptrend)
+    close_to_fast = (close - sma_fast).abs() / sma_fast < 0.05  # within 5%
+    in_trend = sma_fast > sma_slow
+    close_above_fast = close >= sma_fast
+
     signal = pd.Series(0, index=df.index)
-    # Baseline best strategy
-    signal[(sma_fast > sma_slow) & (atr_pct < atr_median * CONFIG["atr_mult"])] = 1
+    # Long when trend up AND low vol (standard), OR just entered from below
+    signal[in_trend & (atr_pct < atr_median * 1.5)] = 1
 
     return signal
