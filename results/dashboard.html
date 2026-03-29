@@ -24,6 +24,31 @@
   .stat-card .detail { font-size: 0.7rem; color: #666; margin-top: 2px; }
   .green { color: #2ecc71; } .blue { color: #3498db; } .red { color: #e74c3c; }
   .orange { color: #f39c12; } .purple { color: #9b59b6; } .cyan { color: #00bcd4; }
+
+  /* Info panels */
+  .info-row {
+    display: flex; gap: 16px; max-width: 1400px; margin: 0 auto 20px auto; flex-wrap: wrap;
+  }
+  .info-panel {
+    background: #16213e; border: 1px solid #2a2a4a; border-radius: 10px;
+    padding: 16px; flex: 1; min-width: 300px;
+  }
+  .info-panel h3 { font-size: 0.85rem; color: #aaa; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .etf-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .etf-card {
+    background: #0f3460; border-radius: 6px; padding: 8px 10px; text-align: center;
+  }
+  .etf-card .ticker { font-weight: 700; font-size: 0.95rem; color: #fff; }
+  .etf-card .name { font-size: 0.68rem; color: #888; margin-top: 2px; line-height: 1.2; }
+  .split-table { width: 100%; font-size: 0.82rem; }
+  .split-table td { padding: 6px 8px; border-bottom: 1px solid #2a2a4a; }
+  .split-table .split-name { font-weight: 600; width: 100px; }
+  .split-table .split-dates { color: #aaa; }
+  .split-table .split-desc { font-size: 0.75rem; color: #666; }
+  .split-train { color: #3498db; }
+  .split-val { color: #f39c12; }
+  .split-test { color: #e74c3c; }
+
   .grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
     max-width: 1400px; margin: 0 auto;
@@ -31,7 +56,7 @@
   .panel { background: #16213e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 16px; }
   .panel h3 { font-size: 0.9rem; color: #aaa; margin-bottom: 10px; }
   .panel canvas { width: 100% !important; }
-  .experiment-log { grid-column: 1 / -1; max-height: 340px; overflow-y: auto; }
+  .experiment-log { grid-column: 1 / -1; max-height: 380px; overflow-y: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 0.78rem; table-layout: fixed; }
   td.desc { word-wrap: break-word; overflow-wrap: break-word; max-width: 320px;
     line-height: 1.3; white-space: normal; }
@@ -46,12 +71,47 @@
   td.vs-worse { color: #e74c3c; }
   tr.kept { background: rgba(46, 204, 113, 0.08); }
   tr.discarded { background: rgba(231, 76, 60, 0.05); }
+  tr.winner-row { background: rgba(46, 204, 113, 0.15); border-left: 3px solid #2ecc71; }
   .badge {
     display: inline-block; padding: 2px 8px; border-radius: 4px;
     font-size: 0.7rem; font-weight: 700;
   }
   .badge-keep { background: #2ecc71; color: #000; }
   .badge-discard { background: #e74c3c; color: #fff; }
+  .pill-pine {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 0.65rem; font-weight: 700; cursor: pointer;
+    background: #f39c12; color: #000; margin-left: 6px;
+    transition: background 0.2s;
+  }
+  .pill-pine:hover { background: #e67e22; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: #16213e; border: 1px solid #2a2a4a; border-radius: 12px;
+    padding: 24px; max-width: 750px; width: 90%; max-height: 80vh;
+    display: flex; flex-direction: column;
+  }
+  .modal h2 { font-size: 1.1rem; color: #f39c12; margin-bottom: 4px; }
+  .modal .modal-subtitle { font-size: 0.8rem; color: #888; margin-bottom: 16px; }
+  .modal pre {
+    background: #0a0a1a; border: 1px solid #2a2a4a; border-radius: 8px;
+    padding: 16px; overflow: auto; flex: 1; font-size: 0.82rem;
+    line-height: 1.5; color: #e0e0e0; font-family: 'Cascadia Code', 'Fira Code', monospace;
+  }
+  .modal-actions { display: flex; gap: 10px; margin-top: 12px; justify-content: flex-end; }
+  .modal-actions button {
+    background: #0f3460; color: #e0e0e0; border: 1px solid #2a2a4a;
+    border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 0.82rem;
+  }
+  .modal-actions button.primary { background: #f39c12; color: #000; font-weight: 600; }
+  .modal-actions button:hover { opacity: 0.85; }
+
   .auto-refresh {
     position: fixed; bottom: 16px; right: 16px; background: #16213e;
     border: 1px solid #2a2a4a; border-radius: 8px; padding: 10px 14px;
@@ -61,13 +121,56 @@
     background: #0f3460; color: #e0e0e0; border: 1px solid #2a2a4a;
     border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.78rem;
   }
-  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+    .etf-grid { grid-template-columns: repeat(2, 1fr); }
+  }
 </style>
 </head>
 <body>
 
 <h1>Autoresearch: Trading Strategy Optimizer</h1>
 <div class="subtitle">Live dashboard &mdash; auto-refreshes from experiment_log.jsonl &mdash; <span style="color:#00bcd4">cyan = Buy &amp; Hold benchmark</span></div>
+
+<!-- ETF & Splits Info -->
+<div class="info-row">
+  <div class="info-panel">
+    <h3>Universe (8 ETFs)</h3>
+    <div class="etf-grid">
+      <div class="etf-card"><div class="ticker">SPY</div><div class="name">S&amp;P 500</div></div>
+      <div class="etf-card"><div class="ticker">QQQ</div><div class="name">Nasdaq 100</div></div>
+      <div class="etf-card"><div class="ticker">IWM</div><div class="name">Russell 2000<br>Small Cap</div></div>
+      <div class="etf-card"><div class="ticker">TLT</div><div class="name">20+ Yr Treasury<br>Bonds</div></div>
+      <div class="etf-card"><div class="ticker">GLD</div><div class="name">Gold</div></div>
+      <div class="etf-card"><div class="ticker">EFA</div><div class="name">Intl Developed<br>Markets</div></div>
+      <div class="etf-card"><div class="ticker">VNQ</div><div class="name">US Real Estate<br>REITs</div></div>
+      <div class="etf-card"><div class="ticker">XLE</div><div class="name">Energy Sector</div></div>
+    </div>
+  </div>
+  <div class="info-panel">
+    <h3>Temporal Splits</h3>
+    <table class="split-table">
+      <tr>
+        <td class="split-name split-train">Train</td>
+        <td class="split-dates">2014-01-01 &rarr; 2019-12-31</td>
+        <td class="split-desc">6 years &mdash; Strategy development. Bull market, low vol.</td>
+      </tr>
+      <tr>
+        <td class="split-name split-val">Validation</td>
+        <td class="split-dates">2020-01-01 &rarr; 2022-12-31</td>
+        <td class="split-desc">3 years &mdash; Score optimization. COVID crash + recovery + 2022 bear.</td>
+      </tr>
+      <tr>
+        <td class="split-name split-test">Test</td>
+        <td class="split-dates">2023-01-01 &rarr; 2025-03-01</td>
+        <td class="split-desc">Holdout &mdash; NEVER exposed to agent. Human evaluation only.</td>
+      </tr>
+    </table>
+    <div style="margin-top:10px; font-size:0.72rem; color:#666;">
+      Initial capital: $100,000 &bull; Long only &bull; 0.1% transaction cost &bull; 0.05% slippage &bull; 1-day execution delay &bull; Equal weight across all tickers
+    </div>
+  </div>
+</div>
 
 <div class="stats-bar" id="stats-bar"></div>
 
@@ -91,6 +194,19 @@
   </div>
 </div>
 
+<!-- Pine Script Modal -->
+<div class="modal-overlay" id="pine-modal">
+  <div class="modal">
+    <h2>TradingView Pine Script</h2>
+    <div class="modal-subtitle">Winning strategy &mdash; copy and paste into TradingView Pine Editor</div>
+    <pre id="pine-code"></pre>
+    <div class="modal-actions">
+      <button id="pine-copy" class="primary">Copy to Clipboard</button>
+      <button id="pine-close">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="auto-refresh">
   Auto-refresh:
   <select id="refresh-interval">
@@ -106,6 +222,7 @@
 <script>
 const charts = {};
 let refreshTimer = null;
+let cachedPineScript = null;
 
 const C = {
   green: '#2ecc71', red: '#e74c3c', blue: '#3498db',
@@ -149,11 +266,46 @@ function fmtDelta(strategy, benchmark) {
   return { text: sign + delta.toFixed(2), better: delta >= 0 };
 }
 
-function createLogRow(e) {
+// Pine Script modal handlers
+function showPineModal() {
+  const overlay = document.getElementById('pine-modal');
+  const codeEl = document.getElementById('pine-code');
+  // Try to load generated pine script
+  fetch('best_strategy.pine?t=' + Date.now())
+    .then(r => { if (!r.ok) throw new Error('not found'); return r.text(); })
+    .then(text => {
+      codeEl.textContent = text;
+      cachedPineScript = text;
+      overlay.classList.add('active');
+    })
+    .catch(() => {
+      codeEl.textContent = '// Pine Script not yet generated.\n// Run: python generate_pine.py -o results/best_strategy.pine';
+      overlay.classList.add('active');
+    });
+}
+
+document.getElementById('pine-close').addEventListener('click', () => {
+  document.getElementById('pine-modal').classList.remove('active');
+});
+document.getElementById('pine-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
+});
+document.getElementById('pine-copy').addEventListener('click', () => {
+  const code = document.getElementById('pine-code').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('pine-copy');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy to Clipboard'; }, 2000);
+  });
+});
+
+function createLogRow(e, isWinner) {
   const tr = document.createElement('tr');
   if (e._isBH) {
     tr.style.background = 'rgba(0, 188, 212, 0.1)';
     tr.style.borderBottom = '2px solid #00bcd4';
+  } else if (isWinner) {
+    tr.className = 'winner-row';
   } else {
     tr.className = e.kept ? 'kept' : 'discarded';
   }
@@ -184,7 +336,7 @@ function createLogRow(e) {
     const td = document.createElement('td');
     if (cell.cls) td.className = cell.cls;
     if (i === 1) {
-      if (e._isBH) {
+      if (isBH) {
         const badge = document.createElement('span');
         badge.className = 'badge';
         badge.style.background = '#00bcd4';
@@ -196,6 +348,14 @@ function createLogRow(e) {
         badge.className = 'badge ' + (e.kept ? 'badge-keep' : 'badge-discard');
         badge.textContent = e.kept ? 'KEEP' : 'DISCARD';
         td.appendChild(badge);
+        // Add Pine Script pill for winner
+        if (isWinner) {
+          const pill = document.createElement('span');
+          pill.className = 'pill-pine';
+          pill.textContent = 'Pine Script';
+          pill.addEventListener('click', showPineModal);
+          td.appendChild(pill);
+        }
       }
     } else {
       td.textContent = cell.text;
@@ -225,7 +385,7 @@ function render(rawEntries) {
   const hasBH = !!bhSource;
   const entries = hasBH ? [{
     experiment: 0,
-    description: 'Buy & Hold (benchmark)',
+    description: 'Buy & Hold (benchmark) | Equal-weight portfolio, all 8 ETFs, fully invested',
     score: bhSource.bh_score ?? null,
     kept: null,
     val_sharpe: bhSource.bh_val_sharpe,
@@ -245,7 +405,7 @@ function render(rawEntries) {
   const keptEntries = stratEntries.filter(e => e.kept);
   const bestEntry = keptEntries.length > 0
     ? keptEntries.reduce((a, b) => a.score > b.score ? a : b)
-    : { score: 0, val_sharpe: 0, max_drawdown: 0, val_return: 0 };
+    : { score: 0, val_sharpe: 0, max_drawdown: 0, val_return: 0, experiment: -1 };
   const lastEntry = stratEntries[stratEntries.length - 1] || entries[0];
   const bhSharpe = hasBH ? bhSource.bh_val_sharpe : null;
   const bhReturn = hasBH ? bhSource.bh_val_return : null;
@@ -358,9 +518,10 @@ function render(rawEntries) {
     }
   });
 
-  // Log table
+  // Log table - mark the winner
+  const winnerExp = bestEntry.experiment;
   const tbody = document.getElementById('log-body');
-  const rows = entries.slice().reverse().map(createLogRow);
+  const rows = entries.slice().reverse().map(e => createLogRow(e, !e._isBH && e.experiment === winnerExp));
   tbody.replaceChildren(...rows);
 }
 
