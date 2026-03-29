@@ -9,7 +9,7 @@ import pandas as pd
 # CONFIG dict: agent tunes these values
 # The keys in CONFIG are counted for complexity scoring
 CONFIG = {
-    "sma_fast": 30,
+    "sma_fast": 40,
     "sma_slow": 200,
     "atr_period": 10,
 }
@@ -43,7 +43,7 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     distance_slow = (close - sma_slow) / sma_slow
 
     signal = pd.Series(0, index=df.index)
-    # SMA 30/200 with distance filters
+    # Best: 25% slow and 10% fast distance thresholds
     signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 1.5) & (distance_slow < 0.25) & (distance_fast < 0.10)] = 1
 
     return signal
