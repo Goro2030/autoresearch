@@ -66,7 +66,7 @@
   }
   td { padding: 5px 4px; }
   th.bh { background: #0a3040; color: #00bcd4; }
-  td { padding: 6px; border-bottom: 1px solid #2a2a4a; }
+  td { border-bottom: 1px solid #2a2a4a; }
   td.bh { color: #00bcd4; font-style: italic; }
   td.vs-better { color: #2ecc71; font-weight: 600; }
   td.vs-worse { color: #e74c3c; }
@@ -183,12 +183,28 @@
   <div class="panel experiment-log">
     <h3>Experiment Log</h3>
     <table>
+      <colgroup>
+        <col style="width:3%">
+        <col style="width:5.5%">
+        <col style="width:5%">
+        <col style="width:5.5%">
+        <col style="width:5.5%">
+        <col style="width:5%">
+        <col style="width:5%">
+        <col style="width:5%">
+        <col style="width:5%">
+        <col style="width:4.5%">
+        <col style="width:4.5%">
+        <col style="width:4.5%">
+        <col style="width:3.5%">
+        <col style="width:38.5%">
+      </colgroup>
       <thead><tr>
         <th>#</th><th>Status</th><th>Score</th>
         <th>Val Sharpe</th><th class="bh">B&amp;H Sharpe</th><th>vs B&amp;H</th>
-        <th>Val Return</th><th class="bh">B&amp;H Return</th><th>vs B&amp;H</th>
+        <th>Val Ret</th><th class="bh">B&amp;H Ret</th><th>vs B&amp;H</th>
         <th>Max DD</th><th class="bh">B&amp;H DD</th>
-        <th>Trades/yr</th><th>Cmplx</th><th>Description</th>
+        <th>Tr/yr</th><th>Cx</th><th>Description</th>
       </tr></thead>
       <tbody id="log-body"></tbody>
     </table>

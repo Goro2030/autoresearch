@@ -28,7 +28,7 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     sma_fast = close.rolling(CONFIG["sma_fast"]).mean()
     sma_slow = close.rolling(CONFIG["sma_slow"]).mean()
 
-    # ATR-based volatility filter with shorter period
+    # ATR-based volatility filter
     tr = pd.concat([
         high - low,
         (high - close.shift(1)).abs(),
@@ -38,8 +38,11 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     atr_pct = atr / close
     atr_median = atr_pct.rolling(200).median()
 
+    # Breadth indicator: how far is price from sma_slow
+    distance = (close - sma_slow) / sma_slow
+
     signal = pd.Series(0, index=df.index)
-    # Long when trend is up AND volatility is not extreme
-    signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 1.5)] = 1
+    # Long when trend up, low vol, AND not too far above SMA200 (avoid tops)
+    signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 1.5) & (distance < 0.30)] = 1
 
     return signal

@@ -38,14 +38,11 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     atr_pct = atr / close
     atr_median = atr_pct.rolling(200).median()
 
-    # Require BOTH: sma crossover AND close is within 2% of fast SMA
-    # (catch pullback entries in uptrend)
-    close_to_fast = (close - sma_fast).abs() / sma_fast < 0.05  # within 5%
-    in_trend = sma_fast > sma_slow
-    close_above_fast = close >= sma_fast
+    # Breadth indicator: how far is price from sma_slow
+    distance = (close - sma_slow) / sma_slow
 
     signal = pd.Series(0, index=df.index)
-    # Long when trend up AND low vol (standard), OR just entered from below
-    signal[in_trend & (atr_pct < atr_median * 1.5)] = 1
+    # Long when trend up, low vol, AND not too far above SMA200 (avoid tops)
+    signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 1.5) & (distance < 0.30)] = 1
 
     return signal
