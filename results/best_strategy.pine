@@ -4,11 +4,12 @@ strategy("Autoresearch Strategy", overlay=true, default_qty_type=strategy.percen
 // ── Parameters ──
 sma_fast = input.int(40, "sma_fast")
 sma_slow = input.int(200, "sma_slow")
+atr_period = input.int(7, "atr_period")
 
 // ── Indicators ──
 sma_sma_fast = ta.sma(close, sma_fast)
 sma_sma_slow = ta.sma(close, sma_slow)
-atr_val = ta.atr(20)
+atr_val = ta.atr(atr_period)
 atr_pct = atr_val / close
 atr_pct_avg = ta.sma(atr_pct, 100)
 
