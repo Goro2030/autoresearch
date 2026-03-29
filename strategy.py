@@ -42,8 +42,16 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     distance_fast = (close - sma_fast) / sma_fast
     distance_slow = (close - sma_slow) / sma_slow
 
+    # Primary conditions
+    trend_ok = sma_fast > sma_slow
+    vol_ok = atr_pct < atr_median * 1.5
+    dist_ok = (distance_slow < 0.25) & (distance_fast < 0.10)
+
+    # Try using absolute distance from SMA200 in normalized units (ATR-scaled)
+    dist_slow_atr = (close - sma_slow) / atr  # in ATR units
+
     signal = pd.Series(0, index=df.index)
-    # Best: 25% slow and 10% fast distance thresholds
-    signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 1.5) & (distance_slow < 0.25) & (distance_fast < 0.10)] = 1
+    # Long when all primary conditions + distance in ATR units < 10 ATRs
+    signal[trend_ok & vol_ok & dist_ok & (dist_slow_atr < 10)] = 1
 
     return signal
