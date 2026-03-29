@@ -9,7 +9,7 @@ import pandas as pd
 # CONFIG dict: agent tunes these values
 # The keys in CONFIG are counted for complexity scoring
 CONFIG = {
-    "sma_fast": 50,
+    "sma_fast": 30,
     "sma_slow": 200,
 }
 
