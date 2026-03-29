@@ -38,13 +38,12 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     atr_pct = atr / close
     atr_median = atr_pct.rolling(200).median()
 
-    # Distance from fast SMA
+    # Distance from fast SMA and slow SMA
     distance_fast = (close - sma_fast) / sma_fast
-    # Distance from slow SMA
     distance_slow = (close - sma_slow) / sma_slow
 
     signal = pd.Series(0, index=df.index)
-    # Long when trend up + low vol + not too far from either SMA
-    signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 1.5) & (distance_slow < 0.30) & (distance_fast < 0.15)] = 1
+    # Try 25% slow and 10% fast thresholds
+    signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 1.5) & (distance_slow < 0.25) & (distance_fast < 0.10)] = 1
 
     return signal
