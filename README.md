@@ -68,8 +68,11 @@ claude
 Claude Code will read `CLAUDE.md` automatically. Then tell it:
 
 ```
-Read CLAUDE.md and run 20 iterations of the autoresearch loop
+Run 20 iterations of the autoresearch loop
 ```
+
+> **Cost optimization:** The loop runs as a Sonnet subagent (configured in `CLAUDE.md`).
+> Sonnet is sufficient for the mechanical hypothesis/test/commit cycle and uses significantly fewer tokens than Opus.
 
 The agent will autonomously:
 1. Read the current strategy and past experiment results

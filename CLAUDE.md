@@ -1,5 +1,10 @@
 # Autoresearch: Trading Strategy Optimization
 
+## Agent Model
+When launching the autoresearch loop as a subagent, always use **Sonnet** (`model: "sonnet"`).
+Opus is overkill for this mechanical loop; Sonnet reasons well enough about strategy hypotheses
+while consuming far fewer tokens.
+
 ## Your Role
 You are a quantitative researcher optimizing a trading strategy. You modify ONLY `strategy.py`.
 DO NOT modify `prepare.py`, `run_experiment.py`, or any infrastructure files.

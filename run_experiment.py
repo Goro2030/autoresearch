@@ -119,10 +119,13 @@ def run_experiment(description: str = "manual run") -> float:
         val_results = run_backtest(strategy_module, split="validation")
         print_report(val_results, "VALIDATION Results")
 
-        # Step 5: Buy & Hold benchmark
+        # Step 5: Buy & Hold benchmark (scored like any strategy)
         print("\n[4/5] Computing Buy & Hold benchmark...")
+        bh_train = run_buy_and_hold(split="train")
         bh_val = run_buy_and_hold(split="validation")
+        bh_score = compute_score(bh_train, bh_val, 0)
         print_report(bh_val, "BUY & HOLD Benchmark (Validation)")
+        print(f"  Buy & Hold Score: {bh_score:.4f}")
 
         # Step 6: Compute score
         print("\n[5/5] Computing composite score...")
@@ -168,6 +171,7 @@ def run_experiment(description: str = "manual run") -> float:
         train_results = {"sharpe": 0, "total_return": 0, "max_drawdown": 0, "trades_per_year": 0}
         val_results = {"sharpe": 0, "total_return": 0, "max_drawdown": 0, "trades_per_year": 0,
                        "pct_profitable_up_months": 0, "pct_profitable_down_months": 0}
+        bh_score = 0
         bh_val = {"sharpe": 0, "total_return": 0, "max_drawdown": 0}
         kept = False
         improved = False
@@ -181,6 +185,7 @@ def run_experiment(description: str = "manual run") -> float:
         train_results = {"sharpe": 0, "total_return": 0, "max_drawdown": 0, "trades_per_year": 0}
         val_results = {"sharpe": 0, "total_return": 0, "max_drawdown": 0, "trades_per_year": 0,
                        "pct_profitable_up_months": 0, "pct_profitable_down_months": 0}
+        bh_score = 0
         bh_val = {"sharpe": 0, "total_return": 0, "max_drawdown": 0}
         kept = False
         improved = False
@@ -197,11 +202,15 @@ def run_experiment(description: str = "manual run") -> float:
             BEST_STRATEGY_FILE.write_text(strategy_path.read_text())
             print(f"\n  💾 Best strategy saved to {BEST_STRATEGY_FILE}")
 
+    # Build rich description: agent description + CONFIG summary
+    config_summary = ", ".join(f"{k}={v}" for k, v in config.items()) if config else "none"
+    rich_description = f"{description} | Config: {config_summary}"
+
     # Log experiment
     log_entry = {
         "experiment": experiment_num,
         "timestamp": timestamp,
-        "description": description,
+        "description": rich_description,
         "score": score,
         "kept": kept,
         "config": config,
@@ -214,6 +223,7 @@ def run_experiment(description: str = "manual run") -> float:
         "trades_per_year": val_results.get("trades_per_year", 0),
         "pct_profitable_up_months": val_results.get("pct_profitable_up_months", 0),
         "pct_profitable_down_months": val_results.get("pct_profitable_down_months", 0),
+        "bh_score": bh_score,
         "bh_val_sharpe": bh_val.get("sharpe", 0),
         "bh_val_return": bh_val.get("total_return", 0),
         "bh_val_max_dd": bh_val.get("max_drawdown", 0),
