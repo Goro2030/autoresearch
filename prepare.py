@@ -227,6 +227,52 @@ def run_backtest(
     return results
 
 
+def run_buy_and_hold(
+    tickers: list[str] = None,
+    split: str = "train",
+) -> dict:
+    """
+    Compute buy-and-hold benchmark: equal-weight portfolio, fully invested from day 1.
+    No transaction costs (single entry, no rebalancing).
+    """
+    tickers = tickers or DEFAULT_TICKERS
+    data = load_data(tickers, split)
+
+    if not data:
+        return _empty_results()
+
+    all_daily_returns = []
+    start_date = None
+    end_date = None
+
+    for ticker, df in data.items():
+        if len(df) < 2:
+            continue
+        close = df["Close"].values
+        daily_ret = np.diff(close) / close[:-1]
+        dates = df.index[1:]
+        sr = pd.Series(daily_ret, index=dates, name=ticker)
+        all_daily_returns.append(sr)
+
+        if start_date is None or dates[0] < start_date:
+            start_date = dates[0]
+        if end_date is None or dates[-1] > end_date:
+            end_date = dates[-1]
+
+    if not all_daily_returns:
+        return _empty_results()
+
+    combined = pd.concat(all_daily_returns, axis=1)
+    portfolio_returns = combined.mean(axis=1).fillna(0)
+    portfolio_value = INITIAL_CAPITAL * (1 + portfolio_returns).cumprod()
+
+    results = _compute_metrics(
+        portfolio_returns, portfolio_value, 0, [],
+        start_date, end_date, data, split
+    )
+    return results
+
+
 def _compute_metrics(
     portfolio_returns: pd.Series,
     portfolio_value: pd.Series,

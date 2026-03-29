@@ -21,8 +21,9 @@
   }
   .stat-card .label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
   .stat-card .value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+  .stat-card .detail { font-size: 0.7rem; color: #666; margin-top: 2px; }
   .green { color: #2ecc71; } .blue { color: #3498db; } .red { color: #e74c3c; }
-  .orange { color: #f39c12; } .purple { color: #9b59b6; }
+  .orange { color: #f39c12; } .purple { color: #9b59b6; } .cyan { color: #00bcd4; }
   .grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
     max-width: 1400px; margin: 0 auto;
@@ -30,13 +31,17 @@
   .panel { background: #16213e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 16px; }
   .panel h3 { font-size: 0.9rem; color: #aaa; margin-bottom: 10px; }
   .panel canvas { width: 100% !important; }
-  .experiment-log { grid-column: 1 / -1; max-height: 300px; overflow-y: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .experiment-log { grid-column: 1 / -1; max-height: 340px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
   th {
-    background: #0f3460; padding: 8px 10px; text-align: left;
-    position: sticky; top: 0; z-index: 1;
+    background: #0f3460; padding: 8px 6px; text-align: left;
+    position: sticky; top: 0; z-index: 1; white-space: nowrap;
   }
-  td { padding: 6px 10px; border-bottom: 1px solid #2a2a4a; }
+  th.bh { background: #0a3040; color: #00bcd4; }
+  td { padding: 6px; border-bottom: 1px solid #2a2a4a; }
+  td.bh { color: #00bcd4; font-style: italic; }
+  td.vs-better { color: #2ecc71; font-weight: 600; }
+  td.vs-worse { color: #e74c3c; }
   tr.kept { background: rgba(46, 204, 113, 0.08); }
   tr.discarded { background: rgba(231, 76, 60, 0.05); }
   .badge {
@@ -60,21 +65,24 @@
 <body>
 
 <h1>Autoresearch: Trading Strategy Optimizer</h1>
-<div class="subtitle">Live dashboard &mdash; auto-refreshes from experiment_log.jsonl</div>
+<div class="subtitle">Live dashboard &mdash; auto-refreshes from experiment_log.jsonl &mdash; <span style="color:#00bcd4">cyan = Buy &amp; Hold benchmark</span></div>
 
 <div class="stats-bar" id="stats-bar"></div>
 
 <div class="grid">
   <div class="panel"><h3>Composite Score per Experiment</h3><canvas id="chartScore"></canvas></div>
-  <div class="panel"><h3>Train vs Validation Sharpe</h3><canvas id="chartSharpe"></canvas></div>
-  <div class="panel"><h3>Max Drawdown (Validation)</h3><canvas id="chartDD"></canvas></div>
+  <div class="panel"><h3>Validation Sharpe: Strategy vs Buy &amp; Hold</h3><canvas id="chartSharpe"></canvas></div>
+  <div class="panel"><h3>Validation Return: Strategy vs Buy &amp; Hold</h3><canvas id="chartReturn"></canvas></div>
   <div class="panel"><h3>Complexity &amp; Trades/Year</h3><canvas id="chartMeta"></canvas></div>
   <div class="panel experiment-log">
     <h3>Experiment Log</h3>
     <table>
       <thead><tr>
-        <th>#</th><th>Status</th><th>Score</th><th>Val Sharpe</th><th>Train Sharpe</th>
-        <th>Max DD</th><th>Trades/yr</th><th>Complexity</th><th>Description</th>
+        <th>#</th><th>Status</th><th>Score</th>
+        <th>Val Sharpe</th><th class="bh">B&amp;H Sharpe</th><th>vs B&amp;H</th>
+        <th>Val Return</th><th class="bh">B&amp;H Return</th><th>vs B&amp;H</th>
+        <th>Max DD</th><th class="bh">B&amp;H DD</th>
+        <th>Trades/yr</th><th>Cmplx</th><th>Description</th>
       </tr></thead>
       <tbody id="log-body"></tbody>
     </table>
@@ -99,7 +107,8 @@ let refreshTimer = null;
 
 const C = {
   green: '#2ecc71', red: '#e74c3c', blue: '#3498db',
-  orange: '#f39c12', purple: '#9b59b6', grid: '#2a2a4a', text: '#e0e0e0'
+  orange: '#f39c12', purple: '#9b59b6', grid: '#2a2a4a',
+  text: '#e0e0e0', cyan: '#00bcd4'
 };
 
 const baseOpts = {
@@ -112,7 +121,7 @@ const baseOpts = {
   }
 };
 
-function createStatCard(label, value, colorClass) {
+function createStatCard(label, value, colorClass, detail) {
   const card = document.createElement('div');
   card.className = 'stat-card';
   const lbl = document.createElement('div');
@@ -123,34 +132,56 @@ function createStatCard(label, value, colorClass) {
   val.textContent = value;
   card.appendChild(lbl);
   card.appendChild(val);
+  if (detail) {
+    const det = document.createElement('div');
+    det.className = 'detail';
+    det.textContent = detail;
+    card.appendChild(det);
+  }
   return card;
+}
+
+function fmtDelta(strategy, benchmark) {
+  const delta = strategy - benchmark;
+  const sign = delta >= 0 ? '+' : '';
+  return { text: sign + delta.toFixed(2), better: delta >= 0 };
 }
 
 function createLogRow(e) {
   const tr = document.createElement('tr');
   tr.className = e.kept ? 'kept' : 'discarded';
 
+  const hasBH = e.bh_val_sharpe !== undefined;
+  const sharpeDelta = hasBH ? fmtDelta(e.val_sharpe, e.bh_val_sharpe) : { text: '-', better: true };
+  const returnDelta = hasBH ? fmtDelta(e.val_return, e.bh_val_return) : { text: '-', better: true };
+
   const cells = [
-    e.experiment,
-    null, // badge handled separately
-    e.score.toFixed(4),
-    e.val_sharpe.toFixed(4),
-    e.train_sharpe.toFixed(4),
-    (e.max_drawdown * 100).toFixed(1) + '%',
-    e.trades_per_year.toFixed(0),
-    e.complexity,
-    e.description || ''
+    { text: e.experiment, cls: '' },
+    { text: null, cls: '' }, // badge
+    { text: e.score.toFixed(4), cls: '' },
+    { text: e.val_sharpe.toFixed(4), cls: '' },
+    { text: hasBH ? e.bh_val_sharpe.toFixed(4) : '-', cls: 'bh' },
+    { text: sharpeDelta.text, cls: sharpeDelta.better ? 'vs-better' : 'vs-worse' },
+    { text: e.val_return.toFixed(1) + '%', cls: '' },
+    { text: hasBH ? e.bh_val_return.toFixed(1) + '%' : '-', cls: 'bh' },
+    { text: returnDelta.text + '%', cls: returnDelta.better ? 'vs-better' : 'vs-worse' },
+    { text: (e.max_drawdown * 100).toFixed(1) + '%', cls: '' },
+    { text: hasBH ? (e.bh_val_max_dd * 100).toFixed(1) + '%' : '-', cls: 'bh' },
+    { text: e.trades_per_year.toFixed(0), cls: '' },
+    { text: e.complexity, cls: '' },
+    { text: e.description || '', cls: '' }
   ];
 
-  cells.forEach((text, i) => {
+  cells.forEach((cell, i) => {
     const td = document.createElement('td');
+    if (cell.cls) td.className = cell.cls;
     if (i === 1) {
       const badge = document.createElement('span');
       badge.className = 'badge ' + (e.kept ? 'badge-keep' : 'badge-discard');
       badge.textContent = e.kept ? 'KEEP' : 'DISCARD';
       td.appendChild(badge);
     } else {
-      td.textContent = text;
+      td.textContent = cell.text;
     }
     tr.appendChild(td);
   });
@@ -176,19 +207,25 @@ function render(entries) {
   const keptEntries = entries.filter(e => e.kept);
   const bestEntry = keptEntries.length > 0
     ? keptEntries.reduce((a, b) => a.score > b.score ? a : b)
-    : { score: 0, val_sharpe: 0, max_drawdown: 0 };
+    : { score: 0, val_sharpe: 0, max_drawdown: 0, val_return: 0 };
   const lastEntry = entries[entries.length - 1];
+  const hasBH = entries.some(e => e.bh_val_sharpe !== undefined);
+  const bhSharpe = hasBH ? (entries.find(e => e.bh_val_sharpe)?.bh_val_sharpe ?? 0) : null;
+  const bhReturn = hasBH ? (entries.find(e => e.bh_val_return)?.bh_val_return ?? 0) : null;
 
-  // Stats bar (safe DOM)
+  // Stats bar
   const bar = document.getElementById('stats-bar');
-  bar.replaceChildren(
-    createStatCard('Total Experiments', entries.length, 'blue'),
+  const statCards = [
+    createStatCard('Experiments', entries.length, 'blue'),
     createStatCard('Kept / Discarded', keptEntries.length + ' / ' + (entries.length - keptEntries.length), 'green'),
     createStatCard('Best Score', bestEntry.score?.toFixed(4) ?? 'N/A', 'green'),
-    createStatCard('Best Val Sharpe', bestEntry.val_sharpe?.toFixed(4) ?? 'N/A', 'orange'),
+    createStatCard('Best Val Sharpe', bestEntry.val_sharpe?.toFixed(4) ?? 'N/A', 'orange',
+      bhSharpe !== null ? 'B&H: ' + bhSharpe.toFixed(4) : ''),
+    createStatCard('Best Val Return', bestEntry.val_return?.toFixed(1) + '%', 'green',
+      bhReturn !== null ? 'B&H: ' + bhReturn.toFixed(1) + '%' : ''),
     createStatCard('Best Max DD', (bestEntry.max_drawdown * 100)?.toFixed(1) + '%', 'red'),
-    createStatCard('Last Score', lastEntry.score?.toFixed(4), 'purple')
-  );
+  ];
+  bar.replaceChildren(...statCards);
 
   // Running best
   let best = -Infinity;
@@ -219,30 +256,42 @@ function render(entries) {
     }}}}
   });
 
-  // Chart 2: Sharpe
+  // Chart 2: Validation Sharpe vs B&H Sharpe
+  const sharpeDatasets = [
+    { label: 'Strategy Val Sharpe', data: entries.map(e => e.val_sharpe), backgroundColor: C.green + 'aa', borderRadius: 3 },
+  ];
+  if (hasBH) {
+    sharpeDatasets.push({
+      label: 'Buy & Hold Sharpe',
+      data: entries.map(e => e.bh_val_sharpe ?? null),
+      type: 'line', borderColor: C.cyan, borderWidth: 2.5,
+      borderDash: [8, 4], pointRadius: 0, fill: false
+    });
+  }
+  sharpeDatasets.push(
+    { label: 'Train Sharpe', data: entries.map(e => e.train_sharpe), backgroundColor: C.blue + '55', borderRadius: 3 }
+  );
   updateChart('chartSharpe', {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Train Sharpe', data: entries.map(e => e.train_sharpe), backgroundColor: C.blue + 'aa', borderRadius: 3 },
-        { label: 'Val Sharpe', data: entries.map(e => e.val_sharpe), backgroundColor: C.green + 'aa', borderRadius: 3 }
-      ]
-    },
+    data: { labels, datasets: sharpeDatasets },
     options: baseOpts
   });
 
-  // Chart 3: Drawdown
-  updateChart('chartDD', {
+  // Chart 3: Validation Return vs B&H Return
+  const returnDatasets = [
+    { label: 'Strategy Return %', data: entries.map(e => e.val_return), backgroundColor: C.green + 'aa', borderRadius: 3 },
+  ];
+  if (hasBH) {
+    returnDatasets.push({
+      label: 'Buy & Hold Return %',
+      data: entries.map(e => e.bh_val_return ?? null),
+      type: 'line', borderColor: C.cyan, borderWidth: 2.5,
+      borderDash: [8, 4], pointRadius: 0, fill: false
+    });
+  }
+  updateChart('chartReturn', {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Max Drawdown %',
-        data: entries.map(e => e.max_drawdown * 100),
-        backgroundColor: C.red + 'aa', borderRadius: 3
-      }]
-    },
+    data: { labels, datasets: returnDatasets },
     options: baseOpts
   });
 
@@ -270,7 +319,7 @@ function render(entries) {
     }
   });
 
-  // Log table (safe DOM)
+  // Log table
   const tbody = document.getElementById('log-body');
   const rows = entries.slice().reverse().map(createLogRow);
   tbody.replaceChildren(...rows);

@@ -109,18 +109,23 @@ def run_experiment(description: str = "manual run") -> float:
         print(f"  Complexity: {complexity} parameters")
 
         # Step 3: Run backtest on TRAIN
-        print("\n[2/4] Running backtest on TRAIN split...")
-        from prepare import run_backtest, print_report, compute_score
+        print("\n[2/5] Running backtest on TRAIN split...")
+        from prepare import run_backtest, run_buy_and_hold, print_report, compute_score
         train_results = run_backtest(strategy_module, split="train")
         print_report(train_results, "TRAIN Results")
 
         # Step 4: Run backtest on VALIDATION
-        print("\n[3/4] Running backtest on VALIDATION split...")
+        print("\n[3/5] Running backtest on VALIDATION split...")
         val_results = run_backtest(strategy_module, split="validation")
         print_report(val_results, "VALIDATION Results")
 
-        # Step 5: Compute score
-        print("\n[4/4] Computing composite score...")
+        # Step 5: Buy & Hold benchmark
+        print("\n[4/5] Computing Buy & Hold benchmark...")
+        bh_val = run_buy_and_hold(split="validation")
+        print_report(bh_val, "BUY & HOLD Benchmark (Validation)")
+
+        # Step 6: Compute score
+        print("\n[5/5] Computing composite score...")
         score = compute_score(train_results, val_results, complexity)
 
         improved = score > current_best
@@ -163,6 +168,7 @@ def run_experiment(description: str = "manual run") -> float:
         train_results = {"sharpe": 0, "total_return": 0, "max_drawdown": 0, "trades_per_year": 0}
         val_results = {"sharpe": 0, "total_return": 0, "max_drawdown": 0, "trades_per_year": 0,
                        "pct_profitable_up_months": 0, "pct_profitable_down_months": 0}
+        bh_val = {"sharpe": 0, "total_return": 0, "max_drawdown": 0}
         kept = False
         improved = False
 
@@ -175,6 +181,7 @@ def run_experiment(description: str = "manual run") -> float:
         train_results = {"sharpe": 0, "total_return": 0, "max_drawdown": 0, "trades_per_year": 0}
         val_results = {"sharpe": 0, "total_return": 0, "max_drawdown": 0, "trades_per_year": 0,
                        "pct_profitable_up_months": 0, "pct_profitable_down_months": 0}
+        bh_val = {"sharpe": 0, "total_return": 0, "max_drawdown": 0}
         kept = False
         improved = False
 
@@ -207,6 +214,9 @@ def run_experiment(description: str = "manual run") -> float:
         "trades_per_year": val_results.get("trades_per_year", 0),
         "pct_profitable_up_months": val_results.get("pct_profitable_up_months", 0),
         "pct_profitable_down_months": val_results.get("pct_profitable_down_months", 0),
+        "bh_val_sharpe": bh_val.get("sharpe", 0),
+        "bh_val_return": bh_val.get("total_return", 0),
+        "bh_val_max_dd": bh_val.get("max_drawdown", 0),
     }
 
     # Ensure all values are JSON-serializable (convert numpy types)
