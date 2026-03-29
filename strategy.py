@@ -40,6 +40,6 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
 
     signal = pd.Series(0, index=df.index)
     # Long when trend is up AND volatility is not extreme
-    signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 2)] = 1
+    signal[(sma_fast > sma_slow) & (atr_pct < atr_median * 1.5)] = 1
 
     return signal
