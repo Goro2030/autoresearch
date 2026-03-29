@@ -92,12 +92,17 @@ def load_data(
     result = {}
 
     for ticker in tickers:
-        filepath = DATA_DIR / f"{ticker}.csv"
-        if not filepath.exists():
+        # Prefer parquet (predownloaded), fall back to CSV
+        parquet_path = DATA_DIR / f"{ticker}.parquet"
+        csv_path = DATA_DIR / f"{ticker}.csv"
+
+        if parquet_path.exists():
+            df = pd.read_parquet(parquet_path)
+        elif csv_path.exists():
+            df = pd.read_csv(csv_path, index_col=0, parse_dates=True)
+        else:
             print(f"  WARNING: No data for {ticker}. Run `python prepare.py` first.")
             continue
-
-        df = pd.read_csv(filepath, index_col=0, parse_dates=True)
         df.index = pd.to_datetime(df.index)
         mask = (df.index >= start) & (df.index <= end)
         filtered = df.loc[mask].copy()
@@ -475,10 +480,14 @@ def main():
         # Show cached data status
         print(f"\n📦 Cached Data:")
         for ticker in args.tickers:
-            filepath = DATA_DIR / f"{ticker}.csv"
-            if filepath.exists():
-                df = pd.read_csv(filepath, index_col=0, parse_dates=True)
-                print(f"  {ticker}: {len(df)} rows ({df.index[0].date()} to {df.index[-1].date()})")
+            parquet_path = DATA_DIR / f"{ticker}.parquet"
+            csv_path = DATA_DIR / f"{ticker}.csv"
+            if parquet_path.exists():
+                df = pd.read_parquet(parquet_path)
+                print(f"  {ticker}: {len(df)} rows ({df.index[0].date()} to {df.index[-1].date()}) [parquet]")
+            elif csv_path.exists():
+                df = pd.read_csv(csv_path, index_col=0, parse_dates=True)
+                print(f"  {ticker}: {len(df)} rows ({df.index[0].date()} to {df.index[-1].date()}) [csv]")
             else:
                 print(f"  {ticker}: not downloaded")
         return
