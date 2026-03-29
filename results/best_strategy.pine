@@ -2,23 +2,19 @@
 strategy("Autoresearch Strategy", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
 
 // ── Parameters ──
-channel_period = input.int(40, "channel_period")
+sma_fast = input.int(40, "sma_fast")
 sma_slow = input.int(200, "sma_slow")
-atr_period = input.int(10, "atr_period")
 
 // ── Indicators ──
+sma_sma_fast = ta.sma(close, sma_fast)
 sma_sma_slow = ta.sma(close, sma_slow)
-atr_val = ta.atr(atr_period)
+atr_val = ta.atr(20)
 atr_pct = atr_val / close
 atr_pct_avg = ta.sma(atr_pct, 100)
-vol_avg = ta.sma(volume, 20)
-dc_upper = ta.highest(high, 20)
-dc_lower = ta.lowest(low, 20)
-dc_mid = (dc_upper + dc_lower) / 2
 
 // ── Entry/Exit Conditions ──
-long_entry = close > sma_sma_slow
-long_exit = close < sma_sma_slow
+long_entry = sma_sma_fast > sma_sma_slow
+long_exit = sma_sma_fast < sma_sma_slow
 
 // ── Strategy Execution ──
 if long_entry
@@ -27,6 +23,7 @@ if long_exit
     strategy.close("Long")
 
 // ── Plots ──
+plot(sma_sma_fast, "sma_fast", color.blue)
 plot(sma_sma_slow, "sma_slow", color.orange)
 
 bgcolor(long_entry ? color.new(color.green, 90) : na)
