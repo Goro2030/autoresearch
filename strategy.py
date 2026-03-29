@@ -28,6 +28,9 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     sma_fast = close.rolling(CONFIG["sma_fast"]).mean()
     sma_slow = close.rolling(CONFIG["sma_slow"]).mean()
 
+    # EMA200 for ATR-unit distance (more responsive price anchor)
+    ema_slow = close.ewm(span=CONFIG["sma_slow"], adjust=False).mean()
+
     # ATR-based volatility filter
     tr = pd.concat([
         high - low,
@@ -38,20 +41,21 @@ def generate_signals(df: pd.DataFrame) -> pd.Series:
     atr_pct = atr / close
     atr_median = atr_pct.rolling(200).median()
 
-    # Distance from fast SMA and slow SMA
-    distance_fast = (close - sma_fast) / sma_fast
-    distance_slow = (close - sma_slow) / sma_slow
-
-    # Primary conditions
+    # SMA crossover for trend direction
     trend_ok = sma_fast > sma_slow
+
+    # Distance filters: % distance from SMA200 (same as best)
+    distance_slow = (close - sma_slow) / sma_slow
+    distance_fast = (close - sma_fast) / sma_fast
+
+    # ATR-unit distance from EMA200 (hybrid - more sensitive)
+    dist_slow_atr_ema = (close - ema_slow) / atr
+
     vol_ok = atr_pct < atr_median * 1.5
     dist_ok = (distance_slow < 0.25) & (distance_fast < 0.10)
 
-    # Try using absolute distance from SMA200 in normalized units (ATR-scaled)
-    dist_slow_atr = (close - sma_slow) / atr  # in ATR units
-
     signal = pd.Series(0, index=df.index)
-    # Long when all primary conditions + distance in ATR units < 10 ATRs
-    signal[trend_ok & vol_ok & dist_ok & (dist_slow_atr < 10)] = 1
+    # Use SMA200 % distance + EMA200 ATR-unit distance
+    signal[trend_ok & vol_ok & dist_ok & (dist_slow_atr_ema < 10)] = 1
 
     return signal
