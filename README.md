@@ -169,6 +169,10 @@ score = min(val_sharpe, 3.0)                          # Primary signal
 - 1-day execution delay (signal on T, trade on T+1 open)
 - Equal weight across all 8 tickers
 
+## Credits
+
+This project is inspired by [**autoresearch**](https://github.com/karpathy/autoresearch) by [Andrej Karpathy](https://github.com/karpathy) — an autonomous research loop where an AI agent iterates on code, evaluates results, and keeps only improvements. The original targets ML model training; this adaptation applies the same pattern to financial backtesting with overfitting-aware scoring.
+
 ## License
 
 MIT
