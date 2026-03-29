@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Autoresearch Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    padding: 20px;
+  }
+  h1 { text-align: center; font-size: 1.6rem; margin-bottom: 6px; color: #fff; }
+  .subtitle { text-align: center; font-size: 0.85rem; color: #888; margin-bottom: 20px; }
+  .stats-bar { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+  .stat-card {
+    background: #16213e; border: 1px solid #2a2a4a; border-radius: 10px;
+    padding: 14px 22px; text-align: center; min-width: 140px;
+  }
+  .stat-card .label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+  .stat-card .value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+  .green { color: #2ecc71; } .blue { color: #3498db; } .red { color: #e74c3c; }
+  .orange { color: #f39c12; } .purple { color: #9b59b6; }
+  .grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    max-width: 1400px; margin: 0 auto;
+  }
+  .panel { background: #16213e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 16px; }
+  .panel h3 { font-size: 0.9rem; color: #aaa; margin-bottom: 10px; }
+  .panel canvas { width: 100% !important; }
+  .experiment-log { grid-column: 1 / -1; max-height: 300px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th {
+    background: #0f3460; padding: 8px 10px; text-align: left;
+    position: sticky; top: 0; z-index: 1;
+  }
+  td { padding: 6px 10px; border-bottom: 1px solid #2a2a4a; }
+  tr.kept { background: rgba(46, 204, 113, 0.08); }
+  tr.discarded { background: rgba(231, 76, 60, 0.05); }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 0.7rem; font-weight: 700;
+  }
+  .badge-keep { background: #2ecc71; color: #000; }
+  .badge-discard { background: #e74c3c; color: #fff; }
+  .auto-refresh {
+    position: fixed; bottom: 16px; right: 16px; background: #16213e;
+    border: 1px solid #2a2a4a; border-radius: 8px; padding: 10px 14px;
+    font-size: 0.8rem; color: #888; z-index: 100;
+  }
+  .auto-refresh select, .auto-refresh button {
+    background: #0f3460; color: #e0e0e0; border: 1px solid #2a2a4a;
+    border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.78rem;
+  }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>Autoresearch: Trading Strategy Optimizer</h1>
+<div class="subtitle">Live dashboard &mdash; auto-refreshes from experiment_log.jsonl</div>
+
+<div class="stats-bar" id="stats-bar"></div>
+
+<div class="grid">
+  <div class="panel"><h3>Composite Score per Experiment</h3><canvas id="chartScore"></canvas></div>
+  <div class="panel"><h3>Train vs Validation Sharpe</h3><canvas id="chartSharpe"></canvas></div>
+  <div class="panel"><h3>Max Drawdown (Validation)</h3><canvas id="chartDD"></canvas></div>
+  <div class="panel"><h3>Complexity &amp; Trades/Year</h3><canvas id="chartMeta"></canvas></div>
+  <div class="panel experiment-log">
+    <h3>Experiment Log</h3>
+    <table>
+      <thead><tr>
+        <th>#</th><th>Status</th><th>Score</th><th>Val Sharpe</th><th>Train Sharpe</th>
+        <th>Max DD</th><th>Trades/yr</th><th>Complexity</th><th>Description</th>
+      </tr></thead>
+      <tbody id="log-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="auto-refresh">
+  Auto-refresh:
+  <select id="refresh-interval">
+    <option value="0">Off</option>
+    <option value="10" selected>10s</option>
+    <option value="30">30s</option>
+    <option value="60">60s</option>
+  </select>
+  <button id="refresh-btn">Refresh Now</button>
+  <span id="last-update" style="margin-left:8px;"></span>
+</div>
+
+<script>
+const charts = {};
+let refreshTimer = null;
+
+const C = {
+  green: '#2ecc71', red: '#e74c3c', blue: '#3498db',
+  orange: '#f39c12', purple: '#9b59b6', grid: '#2a2a4a', text: '#e0e0e0'
+};
+
+const baseOpts = {
+  responsive: true,
+  maintainAspectRatio: true,
+  plugins: { legend: { labels: { color: C.text, font: { size: 11 } } } },
+  scales: {
+    x: { ticks: { color: C.text }, grid: { color: C.grid + '44' } },
+    y: { ticks: { color: C.text }, grid: { color: C.grid + '44' } }
+  }
+};
+
+function createStatCard(label, value, colorClass) {
+  const card = document.createElement('div');
+  card.className = 'stat-card';
+  const lbl = document.createElement('div');
+  lbl.className = 'label';
+  lbl.textContent = label;
+  const val = document.createElement('div');
+  val.className = 'value ' + colorClass;
+  val.textContent = value;
+  card.appendChild(lbl);
+  card.appendChild(val);
+  return card;
+}
+
+function createLogRow(e) {
+  const tr = document.createElement('tr');
+  tr.className = e.kept ? 'kept' : 'discarded';
+
+  const cells = [
+    e.experiment,
+    null, // badge handled separately
+    e.score.toFixed(4),
+    e.val_sharpe.toFixed(4),
+    e.train_sharpe.toFixed(4),
+    (e.max_drawdown * 100).toFixed(1) + '%',
+    e.trades_per_year.toFixed(0),
+    e.complexity,
+    e.description || ''
+  ];
+
+  cells.forEach((text, i) => {
+    const td = document.createElement('td');
+    if (i === 1) {
+      const badge = document.createElement('span');
+      badge.className = 'badge ' + (e.kept ? 'badge-keep' : 'badge-discard');
+      badge.textContent = e.kept ? 'KEEP' : 'DISCARD';
+      td.appendChild(badge);
+    } else {
+      td.textContent = text;
+    }
+    tr.appendChild(td);
+  });
+
+  return tr;
+}
+
+async function loadData() {
+  try {
+    const resp = await fetch('experiment_log.jsonl?t=' + Date.now());
+    const text = await resp.text();
+    const entries = text.trim().split('\n').filter(Boolean).map(l => JSON.parse(l));
+    if (entries.length === 0) return;
+    render(entries);
+    document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+  } catch (e) {
+    console.error('Failed to load data:', e);
+  }
+}
+
+function render(entries) {
+  const labels = entries.map(e => '#' + e.experiment);
+  const keptEntries = entries.filter(e => e.kept);
+  const bestEntry = keptEntries.length > 0
+    ? keptEntries.reduce((a, b) => a.score > b.score ? a : b)
+    : { score: 0, val_sharpe: 0, max_drawdown: 0 };
+  const lastEntry = entries[entries.length - 1];
+
+  // Stats bar (safe DOM)
+  const bar = document.getElementById('stats-bar');
+  bar.replaceChildren(
+    createStatCard('Total Experiments', entries.length, 'blue'),
+    createStatCard('Kept / Discarded', keptEntries.length + ' / ' + (entries.length - keptEntries.length), 'green'),
+    createStatCard('Best Score', bestEntry.score?.toFixed(4) ?? 'N/A', 'green'),
+    createStatCard('Best Val Sharpe', bestEntry.val_sharpe?.toFixed(4) ?? 'N/A', 'orange'),
+    createStatCard('Best Max DD', (bestEntry.max_drawdown * 100)?.toFixed(1) + '%', 'red'),
+    createStatCard('Last Score', lastEntry.score?.toFixed(4), 'purple')
+  );
+
+  // Running best
+  let best = -Infinity;
+  const bestSoFar = entries.map(e => { if (e.kept && e.score > best) best = e.score; return best === -Infinity ? null : best; });
+
+  // Chart 1: Score
+  updateChart('chartScore', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Score',
+          data: entries.map(e => e.score),
+          backgroundColor: entries.map(e => e.kept ? C.green + 'cc' : C.red + '99'),
+          borderRadius: 3
+        },
+        {
+          label: 'Best so far',
+          data: bestSoFar,
+          type: 'line', borderColor: C.orange, borderWidth: 2.5,
+          borderDash: [6, 3], pointRadius: 0, fill: false
+        }
+      ]
+    },
+    options: { ...baseOpts, plugins: { ...baseOpts.plugins, tooltip: { callbacks: {
+      afterLabel: (ctx) => entries[ctx.dataIndex]?.description || ''
+    }}}}
+  });
+
+  // Chart 2: Sharpe
+  updateChart('chartSharpe', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Train Sharpe', data: entries.map(e => e.train_sharpe), backgroundColor: C.blue + 'aa', borderRadius: 3 },
+        { label: 'Val Sharpe', data: entries.map(e => e.val_sharpe), backgroundColor: C.green + 'aa', borderRadius: 3 }
+      ]
+    },
+    options: baseOpts
+  });
+
+  // Chart 3: Drawdown
+  updateChart('chartDD', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Max Drawdown %',
+        data: entries.map(e => e.max_drawdown * 100),
+        backgroundColor: C.red + 'aa', borderRadius: 3
+      }]
+    },
+    options: baseOpts
+  });
+
+  // Chart 4: Complexity & Trades
+  updateChart('chartMeta', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Complexity', data: entries.map(e => e.complexity), backgroundColor: C.purple + 'aa', borderRadius: 3, yAxisID: 'y' },
+        {
+          label: 'Trades/yr', data: entries.map(e => e.trades_per_year), type: 'line',
+          borderColor: C.orange, pointRadius: 4, pointBackgroundColor: C.orange,
+          borderWidth: 2, yAxisID: 'y1', fill: false
+        }
+      ]
+    },
+    options: {
+      ...baseOpts,
+      scales: {
+        ...baseOpts.scales,
+        y: { ...baseOpts.scales.y, position: 'left', title: { display: true, text: 'Complexity', color: C.purple } },
+        y1: { ...baseOpts.scales.y, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Trades/Year', color: C.orange } }
+      }
+    }
+  });
+
+  // Log table (safe DOM)
+  const tbody = document.getElementById('log-body');
+  const rows = entries.slice().reverse().map(createLogRow);
+  tbody.replaceChildren(...rows);
+}
+
+function updateChart(id, config) {
+  if (charts[id]) {
+    charts[id].data = config.data;
+    charts[id].options = config.options;
+    charts[id].update('none');
+  } else {
+    charts[id] = new Chart(document.getElementById(id), config);
+  }
+}
+
+function setupRefresh() {
+  const sel = document.getElementById('refresh-interval');
+  sel.addEventListener('change', () => {
+    if (refreshTimer) clearInterval(refreshTimer);
+    const sec = parseInt(sel.value);
+    if (sec > 0) refreshTimer = setInterval(loadData, sec * 1000);
+  });
+  document.getElementById('refresh-btn').addEventListener('click', loadData);
+  refreshTimer = setInterval(loadData, 10000);
+}
+
+loadData();
+setupRefresh();
+</script>
+</body>
+</html>
